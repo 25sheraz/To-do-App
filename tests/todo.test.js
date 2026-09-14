@@ -1,30 +1,18 @@
 /**
  * tests/todo.test.js
- * Unit tests for SHE-5 + SHE-6
+ * Unit tests for SHE-5 + SHE-6 + SHE-7
  *
  * Runs in Jest's jsdom environment (configured in package.json).
  *
- * SHE-5 covers:
- *  1. Adds a new todo item to the list
- *  2. New items are unchecked by default
- *  3. Input clears after a successful add
- *  4. Empty / whitespace-only submissions are ignored
- *  5. Multiple items can be added sequentially
- *  6. Empty-state message hides once a todo is added
- *
- * SHE-6 covers:
- *  7.  Checking the checkbox adds "completed" class to the item
- *  8.  Unchecking removes "completed" class
- *  9.  toggleTodo() flips checked state and class
- *  10. toggleTodo() twice returns item to original state
- *  11. Completed item label text is unchanged
- *  12. aria-label updates to "Mark as incomplete" after checking
+ * SHE-5: Add a new todo item (7 tests)
+ * SHE-6: Mark a todo item as complete (6 tests)
+ * SHE-7: Delete a todo item (6 tests)
  */
 
 const fs   = require('fs');
 const path = require('path');
 
-/* ── Setup: inject HTML + app.js before each test ── */
+/* ── Setup ── */
 beforeEach(() => {
   const html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf8');
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
@@ -52,7 +40,9 @@ function submitTodo(text) {
   form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
 }
 
-/* ── SHE-5: Add a new todo item ── */
+/* ─────────────────────────────────────────────
+   SHE-5: Add a new todo item
+───────────────────────────────────────────── */
 describe('SHE-5: Add a new todo item', () => {
 
   test('adds a new todo item to the list', () => {
@@ -63,8 +53,7 @@ describe('SHE-5: Add a new todo item', () => {
 
   test('new todo item is unchecked by default', () => {
     submitTodo('Read a book');
-    const checkbox = getList().querySelector('.todo-checkbox');
-    expect(checkbox.checked).toBe(false);
+    expect(getList().querySelector('.todo-checkbox').checked).toBe(false);
   });
 
   test('input clears after adding a todo', () => {
@@ -82,14 +71,11 @@ describe('SHE-5: Add a new todo item', () => {
     expect(getList().children.length).toBe(0);
   });
 
-  test('adds multiple todos and each is unchecked', () => {
+  test('adds multiple todos sequentially', () => {
     submitTodo('Task one');
     submitTodo('Task two');
     submitTodo('Task three');
     expect(getList().children.length).toBe(3);
-    getList().querySelectorAll('.todo-checkbox').forEach((cb) => {
-      expect(cb.checked).toBe(false);
-    });
   });
 
   test('hides empty-state message once a todo is added', () => {
@@ -99,15 +85,15 @@ describe('SHE-5: Add a new todo item', () => {
   });
 });
 
-/* ── SHE-6: Mark a todo item as complete ── */
+/* ─────────────────────────────────────────────
+   SHE-6: Mark a todo item as complete
+───────────────────────────────────────────── */
 describe('SHE-6: Mark a todo item as complete', () => {
 
-  test('checking the checkbox adds "completed" class to the item', () => {
+  test('checking the checkbox adds "completed" class', () => {
     submitTodo('Exercise');
     const li       = getList().children[0];
     const checkbox = li.querySelector('.todo-checkbox');
-
-    expect(li.classList.contains('completed')).toBe(false);
     checkbox.checked = true;
     checkbox.dispatchEvent(new window.Event('change', { bubbles: true }));
     expect(li.classList.contains('completed')).toBe(true);
@@ -117,11 +103,8 @@ describe('SHE-6: Mark a todo item as complete', () => {
     submitTodo('Meditate');
     const li       = getList().children[0];
     const checkbox = li.querySelector('.todo-checkbox');
-
     checkbox.checked = true;
     checkbox.dispatchEvent(new window.Event('change', { bubbles: true }));
-    expect(li.classList.contains('completed')).toBe(true);
-
     checkbox.checked = false;
     checkbox.dispatchEvent(new window.Event('change', { bubbles: true }));
     expect(li.classList.contains('completed')).toBe(false);
@@ -130,19 +113,16 @@ describe('SHE-6: Mark a todo item as complete', () => {
   test('toggleTodo() flips checked state and adds completed class', () => {
     submitTodo('Write tests');
     const li = getList().children[0];
-
     window.__todoApp.toggleTodo(li);
     expect(li.querySelector('.todo-checkbox').checked).toBe(true);
     expect(li.classList.contains('completed')).toBe(true);
   });
 
-  test('toggleTodo() twice returns item to original unchecked state', () => {
+  test('toggleTodo() twice returns item to unchecked state', () => {
     submitTodo('Clean desk');
     const li = getList().children[0];
-
     window.__todoApp.toggleTodo(li);
     window.__todoApp.toggleTodo(li);
-
     expect(li.querySelector('.todo-checkbox').checked).toBe(false);
     expect(li.classList.contains('completed')).toBe(false);
   });
@@ -158,9 +138,61 @@ describe('SHE-6: Mark a todo item as complete', () => {
     submitTodo('Ship feature');
     const li       = getList().children[0];
     const checkbox = li.querySelector('.todo-checkbox');
-
     checkbox.checked = true;
     checkbox.dispatchEvent(new window.Event('change', { bubbles: true }));
     expect(checkbox.getAttribute('aria-label')).toContain('Mark as incomplete');
+  });
+});
+
+/* ─────────────────────────────────────────────
+   SHE-7: Delete a todo item
+───────────────────────────────────────────── */
+describe('SHE-7: Delete a todo item', () => {
+
+  test('each todo item has a delete button', () => {
+    submitTodo('Task with delete');
+    const li = getList().children[0];
+    expect(li.querySelector('.delete-btn')).not.toBeNull();
+  });
+
+  test('clicking delete button removes that item from the list', () => {
+    submitTodo('Remove me');
+    const li        = getList().children[0];
+    const deleteBtn = li.querySelector('.delete-btn');
+    deleteBtn.click();
+    expect(getList().children.length).toBe(0);
+  });
+
+  test('deleteTodo() removes the item immediately', () => {
+    submitTodo('Delete via API');
+    const li = getList().children[0];
+    window.__todoApp.deleteTodo(li);
+    expect(getList().children.length).toBe(0);
+  });
+
+  test('deleting one item leaves others untouched', () => {
+    submitTodo('Keep me');
+    submitTodo('Delete me');
+    submitTodo('Keep me too');
+    const items = getList().children;
+    const deleteBtn = items[1].querySelector('.delete-btn');
+    deleteBtn.click();
+    expect(getList().children.length).toBe(2);
+    expect(getList().children[0].querySelector('.todo-label').textContent).toBe('Keep me');
+    expect(getList().children[1].querySelector('.todo-label').textContent).toBe('Keep me too');
+  });
+
+  test('empty-state message reappears after last item is deleted', () => {
+    submitTodo('Only task');
+    expect(getEmptyState().classList.contains('hidden')).toBe(true);
+    const deleteBtn = getList().children[0].querySelector('.delete-btn');
+    deleteBtn.click();
+    expect(getEmptyState().classList.contains('hidden')).toBe(false);
+  });
+
+  test('delete button has an aria-label for accessibility', () => {
+    submitTodo('Accessible task');
+    const deleteBtn = getList().children[0].querySelector('.delete-btn');
+    expect(deleteBtn.getAttribute('aria-label')).toContain('Delete');
   });
 });

@@ -1,12 +1,6 @@
 {
-  "env": {
-    "browser": true,
-    "es2021": true
-  },
-  "parserOptions": {
-    "ecmaVersion": 2021,
-    "sourceType": "script"
-  },
+  "env": { "browser": true, "es2021": true },
+  "parserOptions": { "ecmaVersion": 2021, "sourceType": "script" },
   "rules": {
     "no-unused-vars": "warn",
     "eqeqeq": ["error", "always"],
@@ -16,17 +10,9 @@
     "semi": ["error", "always"],
     "quotes": ["warn", "single"]
   },
-  "overrides": [
-    {
-      "files": ["tests/**/*.js"],
-      "env": {
-        "node": true,
-        "jest": true,
-        "browser": false
-      },
-      "rules": {
-        "no-console": "off"
-      }
-    }
-  ]
+  "overrides": [{
+    "files": ["tests/**/*.js"],
+    "env": { "node": true, "jest": true, "browser": false },
+    "rules": { "no-console": "off" }
+  }]
 }

@@ -1,25 +1,29 @@
 /**
- * app.js — SHE-5 + SHE-6: Add and toggle todo items
+ * app.js — SHE-5 + SHE-6 + SHE-7: Add, toggle, and delete todo items
  *
  * Features (SHE-5):
  *  - Text input + "Add" button (or Enter key) creates a new unchecked item
- *  - Input clears after adding
- *  - Empty / whitespace-only submissions are ignored
+ *  - Input clears after adding; empty/whitespace submissions ignored
  *
  * Features (SHE-6):
- *  - Clicking the checkbox OR the label toggles complete/incomplete
- *  - Completed items get a "completed" class → strikethrough + greyed text
+ *  - Clicking checkbox or label toggles complete/incomplete
+ *  - Completed items get "completed" class → strikethrough + greyed text
  *  - aria-label updates to reflect current state after toggle
+ *
+ * Features (SHE-7):
+ *  - Each item has a delete button (×)
+ *  - Clicking it removes that item immediately, no confirmation needed
+ *  - Empty-state message re-appears when the last item is deleted
  */
 
 (function () {
   'use strict';
 
   /* ── DOM refs ── */
-  const form      = document.getElementById('todo-form');
-  const input     = document.getElementById('todo-input');
-  const list      = document.getElementById('todo-list');
-  const emptyMsg  = document.getElementById('empty-state');
+  const form     = document.getElementById('todo-form');
+  const input    = document.getElementById('todo-input');
+  const list     = document.getElementById('todo-list');
+  const emptyMsg = document.getElementById('empty-state');
 
   let nextId = 1;
 
@@ -38,7 +42,6 @@
 
   /**
    * Toggle a todo item's complete / incomplete state (SHE-6).
-   * Updates the checkbox, the "completed" CSS class, and the aria-label.
    * @param {HTMLElement} li - The <li> todo item element.
    */
   function toggleTodo(li) {
@@ -48,9 +51,18 @@
     checkbox.checked = !checkbox.checked;
     li.classList.toggle('completed', checkbox.checked);
 
-    // Keep aria-label meaningful after toggle
     const action = checkbox.checked ? 'Mark as incomplete' : 'Mark as complete';
     checkbox.setAttribute('aria-label', `${action}: "${label.textContent}"`);
+  }
+
+  /**
+   * Delete a todo item from the list (SHE-7).
+   * Removes the <li> immediately and syncs the empty-state message.
+   * @param {HTMLElement} li - The <li> todo item element to remove.
+   */
+  function deleteTodo(li) {
+    li.remove();
+    syncEmptyState();
   }
 
   /**
@@ -59,32 +71,45 @@
    * @returns {HTMLElement} The created list item.
    */
   function addTodo(text) {
-    const id       = `todo-${nextId++}`;
-    const li       = document.createElement('li');
-    li.className   = 'todo-item';
-    li.dataset.id  = id;
+    const id      = `todo-${nextId++}`;
+    const li      = document.createElement('li');
+    li.className  = 'todo-item';
+    li.dataset.id = id;
 
-    const checkbox        = document.createElement('input');
-    checkbox.type         = 'checkbox';
-    checkbox.className    = 'todo-checkbox';
-    checkbox.id           = `chk-${id}`;
-    checkbox.checked      = false;
+    /* Checkbox (SHE-5 / SHE-6) */
+    const checkbox     = document.createElement('input');
+    checkbox.type      = 'checkbox';
+    checkbox.className = 'todo-checkbox';
+    checkbox.id        = `chk-${id}`;
+    checkbox.checked   = false;
     checkbox.setAttribute('aria-label', `Mark as complete: "${text}"`);
 
-    const label       = document.createElement('label');
-    label.className   = 'todo-label';
-    label.htmlFor     = `chk-${id}`;
-    label.textContent = text;
-
-    // SHE-6: checkbox change drives the visual toggle
     checkbox.addEventListener('change', () => {
       li.classList.toggle('completed', checkbox.checked);
       const action = checkbox.checked ? 'Mark as incomplete' : 'Mark as complete';
       checkbox.setAttribute('aria-label', `${action}: "${text}"`);
     });
 
+    /* Label (SHE-5 / SHE-6) */
+    const label       = document.createElement('label');
+    label.className   = 'todo-label';
+    label.htmlFor     = `chk-${id}`;
+    label.textContent = text;
+
+    /* Delete button (SHE-7) */
+    const deleteBtn   = document.createElement('button');
+    deleteBtn.type    = 'button';
+    deleteBtn.className = 'delete-btn';
+    deleteBtn.textContent = '×';
+    deleteBtn.setAttribute('aria-label', `Delete "${text}"`);
+
+    deleteBtn.addEventListener('click', () => {
+      deleteTodo(li);
+    });
+
     li.appendChild(checkbox);
     li.appendChild(label);
+    li.appendChild(deleteBtn);
     list.appendChild(li);
 
     syncEmptyState();
@@ -95,8 +120,6 @@
 
   /**
    * Handle the add-todo form submit event.
-   * Ignores empty / whitespace-only input.
-   * Clears the input field after a successful add.
    * @param {SubmitEvent} e
    */
   function handleSubmit(e) {
@@ -121,5 +144,5 @@
   syncEmptyState();
 
   /* ── Public API (used by tests) ── */
-  window.__todoApp = { addTodo, toggleTodo, syncEmptyState };
+  window.__todoApp = { addTodo, toggleTodo, deleteTodo, syncEmptyState };
 })();
