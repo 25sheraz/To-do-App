@@ -1,4 +1,4 @@
-﻿name: PR Code Review
+name: PR Code Review
 
 on:
   pull_request:
@@ -30,7 +30,7 @@ jobs:
         id: eslint
         run: |
           set +e
-          npx eslint "app.js" "tests/**/*.js" --format stylish 2>&1 | tee eslint_report.txt
+          npx eslint "app.js" "mcp-server/**/*.js" "tests/**/*.js" --format stylish 2>&1 | tee eslint_report.txt
           EXIT_CODE=${PIPESTATUS[0]}
           echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
           set -e
@@ -51,11 +51,11 @@ jobs:
 
             const passed = exitCode === '0';
             const header = passed
-              ? '## Γ£à Automated Code Review ΓÇö ESLint\n\nNo issues found. Code looks clean!'
-              : '## Γ¥î Automated Code Review ΓÇö ESLint\n\nIssues were found. Please address them before merging.';
+              ? '## ✅ Automated Code Review — ESLint\n\nNo issues found. Code looks clean!'
+              : '## ❌ Automated Code Review — ESLint\n\nIssues were found. Please address them before merging.';
 
             const body = passed
-              ? `${header}\n\n> Checked: \`app.js\`, \`tests/**/*.js\``
+              ? `${header}\n\n> Checked: \`app.js\`, \`mcp-server/**/*.js\`, \`tests/**/*.js\``
               : `${header}\n\n\`\`\`\n${report}\n\`\`\``;
 
             // Delete previous bot review comments to avoid clutter

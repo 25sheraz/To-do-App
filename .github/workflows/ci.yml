@@ -1,4 +1,4 @@
-﻿name: CI
+name: CI
 
 on:
   push:
@@ -28,4 +28,4 @@ jobs:
         run: npx jest --no-coverage --ci
 
       - name: Run ESLint
-        run: npx eslint "app.js" "tests/**/*.js" --max-warnings 0
+        run: npx eslint "app.js" "mcp-server/**/*.js" "tests/**/*.js" --max-warnings 0

@@ -4,7 +4,8 @@
   "description": "Minimal todo app — SHE-5",
   "scripts": {
     "test": "jest --testEnvironment jsdom",
-    "lint": "eslint app.js tests/**/*.js"
+    "lint": "eslint app.js mcp-server/**/*.js tests/**/*.js",
+    "mcp": "node mcp-server/index.js"
   },
   "devDependencies": {
     "eslint": "^8.57.0",
