@@ -1,11 +1,15 @@
 /**
- * app.js — SHE-5: Add a new todo item
+ * app.js — SHE-5 + SHE-6: Add and toggle todo items
  *
- * Features:
+ * Features (SHE-5):
  *  - Text input + "Add" button (or Enter key) creates a new unchecked item
  *  - Input clears after adding
  *  - Empty / whitespace-only submissions are ignored
- *  - Clicking the item or its checkbox toggles complete/incomplete
+ *
+ * Features (SHE-6):
+ *  - Clicking the checkbox OR the label toggles complete/incomplete
+ *  - Completed items get a "completed" class → strikethrough + greyed text
+ *  - aria-label updates to reflect current state after toggle
  */
 
 (function () {
@@ -33,6 +37,23 @@
   }
 
   /**
+   * Toggle a todo item's complete / incomplete state (SHE-6).
+   * Updates the checkbox, the "completed" CSS class, and the aria-label.
+   * @param {HTMLElement} li - The <li> todo item element.
+   */
+  function toggleTodo(li) {
+    const checkbox = li.querySelector('.todo-checkbox');
+    const label    = li.querySelector('.todo-label');
+
+    checkbox.checked = !checkbox.checked;
+    li.classList.toggle('completed', checkbox.checked);
+
+    // Keep aria-label meaningful after toggle
+    const action = checkbox.checked ? 'Mark as incomplete' : 'Mark as complete';
+    checkbox.setAttribute('aria-label', `${action}: "${label.textContent}"`);
+  }
+
+  /**
    * Create and append a new todo <li> element.
    * @param {string} text - The trimmed todo text.
    * @returns {HTMLElement} The created list item.
@@ -47,16 +68,19 @@
     checkbox.type         = 'checkbox';
     checkbox.className    = 'todo-checkbox';
     checkbox.id           = `chk-${id}`;
-    checkbox.checked      = false;          // SHE-5: unchecked by default
-    checkbox.setAttribute('aria-label', `Mark "${text}" as complete`);
+    checkbox.checked      = false;
+    checkbox.setAttribute('aria-label', `Mark as complete: "${text}"`);
 
-    const label            = document.createElement('label');
-    label.className        = 'todo-label';
-    label.htmlFor          = `chk-${id}`;
-    label.textContent      = text;
+    const label       = document.createElement('label');
+    label.className   = 'todo-label';
+    label.htmlFor     = `chk-${id}`;
+    label.textContent = text;
 
+    // SHE-6: checkbox change drives the visual toggle
     checkbox.addEventListener('change', () => {
       li.classList.toggle('completed', checkbox.checked);
+      const action = checkbox.checked ? 'Mark as incomplete' : 'Mark as complete';
+      checkbox.setAttribute('aria-label', `${action}: "${text}"`);
     });
 
     li.appendChild(checkbox);
@@ -80,7 +104,6 @@
 
     const text = input.value.trim();
 
-    // SHE-5: ignore empty submissions
     if (!text) {
       input.focus();
       return;
@@ -88,7 +111,6 @@
 
     addTodo(text);
 
-    // SHE-5: clear input after adding
     input.value = '';
     input.focus();
   }
@@ -99,5 +121,5 @@
   syncEmptyState();
 
   /* ── Public API (used by tests) ── */
-  window.__todoApp = { addTodo, syncEmptyState };
+  window.__todoApp = { addTodo, toggleTodo, syncEmptyState };
 })();
