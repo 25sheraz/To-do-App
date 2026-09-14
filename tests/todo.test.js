@@ -13,8 +13,7 @@
 const fs   = require('fs');
 const path = require('path');
 
-/* ── Setup ── */
-beforeEach(() => {
+function reloadApp() {
   const html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf8');
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
   document.body.innerHTML = bodyMatch ? bodyMatch[1] : html;
@@ -22,9 +21,16 @@ beforeEach(() => {
   const appCode = fs.readFileSync(path.resolve(__dirname, '../app.js'), 'utf8');
   // eslint-disable-next-line no-eval
   window.eval(appCode);
+}
+
+/* ── Setup ── */
+beforeEach(() => {
+  window.localStorage.clear();
+  reloadApp();
 });
 
 afterEach(() => {
+  window.localStorage.clear();
   delete window.__todoApp;
 });
 
@@ -256,5 +262,93 @@ describe('SHE-9: Delete edge cases – list integrity', () => {
     expect(getList().children.length).toBe(1);
     expect(getList().children[0].classList.contains('completed')).toBe(false);
     expect(getList().children[0].querySelector('.todo-label').textContent).toBe('Keep this (incomplete)');
+  });
+});
+
+/* ─────────────────────────────────────────────
+   SHE-8: Persist todos across page reload
+───────────────────────────────────────────── */
+describe('SHE-8: Persist todos across page reload', () => {
+
+  test('saves newly added todos to localStorage', () => {
+    submitTodo('Persistent task');
+    const stored = JSON.parse(window.localStorage.getItem('todos'));
+    expect(Array.isArray(stored)).toBe(true);
+    expect(stored.length).toBe(1);
+    expect(stored[0].text).toBe('Persistent task');
+    expect(stored[0].completed).toBe(false);
+    expect(typeof stored[0].id).toBe('string');
+  });
+
+  test('updates localStorage when a todo is toggled complete', () => {
+    submitTodo('Task to complete');
+    const li = getList().children[0];
+    window.__todoApp.toggleTodo(li);
+
+    const stored = JSON.parse(window.localStorage.getItem('todos'));
+    expect(stored[0].completed).toBe(true);
+  });
+
+  test('updates localStorage when a todo is toggled back to incomplete', () => {
+    submitTodo('Toggle twice');
+    const li = getList().children[0];
+    window.__todoApp.toggleTodo(li);
+    window.__todoApp.toggleTodo(li);
+
+    const stored = JSON.parse(window.localStorage.getItem('todos'));
+    expect(stored[0].completed).toBe(false);
+  });
+
+  test('updates localStorage when a todo is deleted', () => {
+    submitTodo('Keep');
+    submitTodo('Remove');
+    const liToRemove = getList().children[1];
+    window.__todoApp.deleteTodo(liToRemove);
+
+    const stored = JSON.parse(window.localStorage.getItem('todos'));
+    expect(stored.length).toBe(1);
+    expect(stored[0].text).toBe('Keep');
+  });
+
+  test('reloads todos from localStorage on app re-initialization', () => {
+    submitTodo('First item');
+    submitTodo('Second item');
+    window.__todoApp.toggleTodo(getList().children[0]);
+
+    // Simulate page reload
+    reloadApp();
+
+    expect(getList().children.length).toBe(2);
+    expect(getList().children[0].querySelector('.todo-label').textContent).toBe('First item');
+    expect(getList().children[0].classList.contains('completed')).toBe(true);
+    expect(getList().children[0].querySelector('.todo-checkbox').checked).toBe(true);
+    expect(getList().children[1].querySelector('.todo-label').textContent).toBe('Second item');
+    expect(getList().children[1].classList.contains('completed')).toBe(false);
+    expect(getList().children[1].querySelector('.todo-checkbox').checked).toBe(false);
+    expect(getEmptyState().classList.contains('hidden')).toBe(true);
+  });
+
+  test('preserves the order of todos across reload', () => {
+    submitTodo('Alpha');
+    submitTodo('Beta');
+    submitTodo('Gamma');
+
+    reloadApp();
+
+    const labels = Array.from(getList().querySelectorAll('.todo-label')).map((l) => l.textContent);
+    expect(labels).toEqual(['Alpha', 'Beta', 'Gamma']);
+  });
+
+  test('handles empty localStorage cleanly on load', () => {
+    reloadApp();
+    expect(getList().children.length).toBe(0);
+    expect(getEmptyState().classList.contains('hidden')).toBe(false);
+  });
+
+  test('handles corrupted/invalid JSON in localStorage gracefully without throwing', () => {
+    window.localStorage.setItem('todos', '{{invalid-json');
+    expect(() => reloadApp()).not.toThrow();
+    expect(getList().children.length).toBe(0);
+    expect(getEmptyState().classList.contains('hidden')).toBe(false);
   });
 });
