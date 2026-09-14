@@ -1,0 +1,94 @@
+﻿name: Linear Sync
+
+on:
+  pull_request:
+    types: [opened, reopened, closed]
+    branches: [main]
+
+jobs:
+  sync:
+    name: Sync Linear ticket status
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Extract Linear issue ID from branch name
+        id: extract
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          echo "Branch: $BRANCH"
+          # Match pattern like she-5, SHE-5, abc-123 at start of branch name
+          ISSUE_RAW=$(echo "$BRANCH" | grep -oiE '^[a-z]+-[0-9]+' || echo "")
+          ISSUE_ID=$(echo "$ISSUE_RAW" | tr '[:lower:]' '[:upper:]')
+          echo "Extracted issue ID: $ISSUE_ID"
+          echo "issue_id=$ISSUE_ID" >> $GITHUB_OUTPUT
+
+      - name: Fail early if no issue ID found
+        if: steps.extract.outputs.issue_id == ''
+        run: |
+          echo "No Linear issue ID found in branch name '${{ github.head_ref }}'. Skipping."
+          exit 0
+
+      - name: Set status ΓåÆ In Review (PR opened)
+        if: |
+          steps.extract.outputs.issue_id != '' &&
+          (github.event.action == 'opened' || github.event.action == 'reopened')
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          ISSUE_ID: ${{ steps.extract.outputs.issue_id }}
+        run: |
+          echo "Fetching Linear workflow states..."
+          STATES=$(curl -s -X POST https://api.linear.app/graphql \
+            -H "Authorization: Bearer $LINEAR_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"query": "{ workflowStates { nodes { id name } } }"}')
+
+          STATE_ID=$(echo "$STATES" | jq -r '.data.workflowStates.nodes[] | select(.name == "In Review") | .id' | head -1)
+          echo "In Review state ID: $STATE_ID"
+
+          if [ -z "$STATE_ID" ]; then
+            echo "Could not find 'In Review' state. Skipping."
+            exit 0
+          fi
+
+          RESULT=$(curl -s -X POST https://api.linear.app/graphql \
+            -H "Authorization: Bearer $LINEAR_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"query\": \"mutation { issueUpdate(id: \\\"$ISSUE_ID\\\", input: { stateId: \\\"$STATE_ID\\\" }) { success issue { identifier state { name } } } }\"}")
+
+          echo "Linear response: $RESULT"
+          SUCCESS=$(echo "$RESULT" | jq -r '.data.issueUpdate.success')
+          STATE_NAME=$(echo "$RESULT" | jq -r '.data.issueUpdate.issue.state.name')
+          echo "Γ£à $ISSUE_ID moved to: $STATE_NAME (success=$SUCCESS)"
+
+      - name: Set status ΓåÆ Done (PR merged)
+        if: |
+          steps.extract.outputs.issue_id != '' &&
+          github.event.action == 'closed' &&
+          github.event.pull_request.merged == true
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          ISSUE_ID: ${{ steps.extract.outputs.issue_id }}
+        run: |
+          echo "Fetching Linear workflow states..."
+          STATES=$(curl -s -X POST https://api.linear.app/graphql \
+            -H "Authorization: Bearer $LINEAR_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"query": "{ workflowStates { nodes { id name } } }"}')
+
+          STATE_ID=$(echo "$STATES" | jq -r '.data.workflowStates.nodes[] | select(.name == "Done") | .id' | head -1)
+          echo "Done state ID: $STATE_ID"
+
+          if [ -z "$STATE_ID" ]; then
+            echo "Could not find 'Done' state. Skipping."
+            exit 0
+          fi
+
+          RESULT=$(curl -s -X POST https://api.linear.app/graphql \
+            -H "Authorization: Bearer $LINEAR_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"query\": \"mutation { issueUpdate(id: \\\"$ISSUE_ID\\\", input: { stateId: \\\"$STATE_ID\\\" }) { success issue { identifier state { name } } } }\"}")
+
+          echo "Linear response: $RESULT"
+          SUCCESS=$(echo "$RESULT" | jq -r '.data.issueUpdate.success')
+          STATE_NAME=$(echo "$RESULT" | jq -r '.data.issueUpdate.issue.state.name')
+          echo "Γ£à $ISSUE_ID moved to: $STATE_NAME (success=$SUCCESS)"

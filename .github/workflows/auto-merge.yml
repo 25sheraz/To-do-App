@@ -1,0 +1,70 @@
+﻿name: Auto Merge
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  auto-merge:
+    name: Merge PR when CI passes
+    runs-on: ubuntu-latest
+    # Only run if CI succeeded
+    if: github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Find open PR for this commit
+        id: find_pr
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Looking for open PR with head SHA: $SHA"
+          PR_DATA=$(curl -s \
+            -H "Authorization: Bearer $PAT_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$REPO/pulls?state=open&per_page=50")
+
+          PR_NUMBER=$(echo "$PR_DATA" | jq -r ".[] | select(.head.sha == \"$SHA\") | .number" | head -1)
+          PR_TITLE=$(echo "$PR_DATA" | jq -r ".[] | select(.head.sha == \"$SHA\") | .title" | head -1)
+
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "pr_title=$PR_TITLE" >> $GITHUB_OUTPUT
+          echo "Found PR: #$PR_NUMBER ΓÇö $PR_TITLE"
+
+      - name: Skip if no PR found
+        if: steps.find_pr.outputs.pr_number == '' || steps.find_pr.outputs.pr_number == 'null'
+        run: |
+          echo "No open PR found for SHA ${{ github.event.workflow_run.head_sha }}. Nothing to merge."
+
+      - name: Squash-merge the PR
+        if: steps.find_pr.outputs.pr_number != '' && steps.find_pr.outputs.pr_number != 'null'
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.find_pr.outputs.pr_number }}
+          PR_TITLE: ${{ steps.find_pr.outputs.pr_title }}
+        run: |
+          echo "Auto-merging PR #$PR_NUMBER: $PR_TITLE"
+
+          RESPONSE=$(curl -s -o response.json -w "%{http_code}" \
+            -X PUT \
+            -H "Authorization: Bearer $PAT_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$REPO/pulls/$PR_NUMBER/merge" \
+            -d "{
+              \"merge_method\": \"squash\",
+              \"commit_title\": \"$PR_TITLE\",
+              \"commit_message\": \"Auto-merged by CI Γ£à\"
+            }")
+
+          cat response.json
+          echo "HTTP status: $RESPONSE"
+
+          if [ "$RESPONSE" = "200" ]; then
+            echo "Γ£à PR #$PR_NUMBER merged successfully!"
+          else
+            echo "Γ¥î Merge failed with HTTP $RESPONSE"
+            exit 1
+          fi
