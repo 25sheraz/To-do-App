@@ -2,9 +2,8 @@
 
 > **Evaluation Task**: AI Automation Engineer (Intern) — Shayan Solutions  
 > **Repository**: [github.com/25sheraz/To-do-App](https://github.com/25sheraz/To-do-App)  
-> **Linear Project**: [To-do-list](https://linear.app/sheraz-ahmad/project/to-do-list-51860119c343)
-
----
+> **Linear Project**: [To-do-list](https://linear.app/sheraz-ahmad/project/to-do-list-51860119c343)  
+> **Demo Video Walkthrough**: [Watch Video Recording](https://photos.app.goo.gl/NwhxAQhU1vibBE5S9)  
 
 ## 1. Overview
 
