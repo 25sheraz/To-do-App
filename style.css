@@ -382,6 +382,47 @@ body {
 }
 
 /* =============================================
+   Todo Toolbar / Clear Completed (SHE-10)
+   ============================================= */
+.todo-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 14px;
+  margin-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  transition: opacity var(--transition-base);
+}
+
+.todo-toolbar.hidden {
+  display: none;
+}
+
+.clear-completed-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.clear-completed-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.clear-completed-btn:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* =============================================
    Responsive
    ============================================= */
 @media (max-width: 480px) {

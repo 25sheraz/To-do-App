@@ -37,8 +37,10 @@ afterEach(() => {
 /* ── Helpers ── */
 function getForm()       { return document.getElementById('todo-form'); }
 function getInput()      { return document.getElementById('todo-input'); }
-function getList()       { return document.getElementById('todo-list'); }
-function getEmptyState() { return document.getElementById('empty-state'); }
+function getList()              { return document.getElementById('todo-list'); }
+function getEmptyState()        { return document.getElementById('empty-state'); }
+function getToolbar()           { return document.getElementById('todo-toolbar'); }
+function getClearCompletedBtn() { return document.getElementById('clear-completed-btn'); }
 
 function submitTodo(text) {
   const input = getInput();
@@ -350,5 +352,95 @@ describe('SHE-8: Persist todos across page reload', () => {
     expect(() => reloadApp()).not.toThrow();
     expect(getList().children.length).toBe(0);
     expect(getEmptyState().classList.contains('hidden')).toBe(false);
+  });
+});
+
+/* ─────────────────────────────────────────────
+   SHE-10: Add a "clear completed" button
+───────────────────────────────────────────── */
+describe('SHE-10: Add a "clear completed" button', () => {
+
+  test('clear completed button exists in the DOM and is hidden when no completed items exist', () => {
+    expect(getClearCompletedBtn()).not.toBeNull();
+    expect(getToolbar().classList.contains('hidden')).toBe(true);
+  });
+
+  test('toolbar becomes visible when at least one item is marked completed', () => {
+    submitTodo('Pending task');
+    expect(getToolbar().classList.contains('hidden')).toBe(true);
+
+    const li = getList().children[0];
+    window.__todoApp.toggleTodo(li);
+    expect(getToolbar().classList.contains('hidden')).toBe(false);
+  });
+
+  test('toolbar hides again if completed item is untoggled', () => {
+    submitTodo('Task 1');
+    const li = getList().children[0];
+    window.__todoApp.toggleTodo(li);
+    expect(getToolbar().classList.contains('hidden')).toBe(false);
+
+    window.__todoApp.toggleTodo(li);
+    expect(getToolbar().classList.contains('hidden')).toBe(true);
+  });
+
+  test('clicking "Clear completed" removes all completed items and leaves incomplete ones', () => {
+    submitTodo('Task A (keep)');
+    submitTodo('Task B (delete)');
+    submitTodo('Task C (delete)');
+    submitTodo('Task D (keep)');
+
+    window.__todoApp.toggleTodo(getList().children[1]); // Task B
+    window.__todoApp.toggleTodo(getList().children[2]); // Task C
+
+    getClearCompletedBtn().click();
+
+    expect(getList().children.length).toBe(2);
+    const labels = Array.from(getList().querySelectorAll('.todo-label')).map((l) => l.textContent);
+    expect(labels).toEqual(['Task A (keep)', 'Task D (keep)']);
+    expect(getToolbar().classList.contains('hidden')).toBe(true);
+  });
+
+  test('clearing all items restores empty-state message', () => {
+    submitTodo('Only task');
+    window.__todoApp.toggleTodo(getList().children[0]);
+    expect(getEmptyState().classList.contains('hidden')).toBe(true);
+
+    getClearCompletedBtn().click();
+
+    expect(getList().children.length).toBe(0);
+    expect(getEmptyState().classList.contains('hidden')).toBe(false);
+    expect(getToolbar().classList.contains('hidden')).toBe(true);
+  });
+
+  test('clearCompleted updates localStorage', () => {
+    submitTodo('Item 1');
+    submitTodo('Item 2');
+    window.__todoApp.toggleTodo(getList().children[0]);
+
+    getClearCompletedBtn().click();
+
+    const stored = JSON.parse(window.localStorage.getItem('todos'));
+    expect(stored.length).toBe(1);
+    expect(stored[0].text).toBe('Item 2');
+    expect(stored[0].completed).toBe(false);
+  });
+
+  test('clearCompleted() via public API works identically', () => {
+    submitTodo('Alpha');
+    submitTodo('Beta');
+    window.__todoApp.toggleTodo(getList().children[0]);
+
+    window.__todoApp.clearCompleted();
+
+    expect(getList().children.length).toBe(1);
+    expect(getList().children[0].querySelector('.todo-label').textContent).toBe('Beta');
+  });
+
+  test('calling clearCompleted when no items are completed is a safe no-op', () => {
+    submitTodo('Only incomplete');
+    expect(() => window.__todoApp.clearCompleted()).not.toThrow();
+    expect(getList().children.length).toBe(1);
+    expect(getToolbar().classList.contains('hidden')).toBe(true);
   });
 });

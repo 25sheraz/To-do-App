@@ -19,11 +19,12 @@
 (function () {
   'use strict';
 
-  /* ── DOM refs ── */
-  const form     = document.getElementById('todo-form');
-  const input    = document.getElementById('todo-input');
-  const list     = document.getElementById('todo-list');
-  const emptyMsg = document.getElementById('empty-state');
+  const form         = document.getElementById('todo-form');
+  const input        = document.getElementById('todo-input');
+  const list         = document.getElementById('todo-list');
+  const emptyMsg     = document.getElementById('empty-state');
+  const toolbar      = document.getElementById('todo-toolbar');
+  const clearCompBtn = document.getElementById('clear-completed-btn');
 
   const STORAGE_KEY = 'todos';
   let nextId = 1;
@@ -62,6 +63,30 @@
   }
 
   /**
+   * Show / hide the clear-completed toolbar based on presence of completed items (SHE-10).
+   */
+  function syncClearCompleted() {
+    if (!toolbar) return;
+    const hasCompleted = list.querySelector('.todo-item.completed') !== null;
+    if (hasCompleted) {
+      toolbar.classList.remove('hidden');
+    } else {
+      toolbar.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Remove all completed todo items (SHE-10).
+   */
+  function clearCompleted() {
+    const completedItems = list.querySelectorAll('.todo-item.completed');
+    completedItems.forEach((li) => li.remove());
+    syncEmptyState();
+    syncClearCompleted();
+    saveTodos();
+  }
+
+  /**
    * Toggle a todo item's complete / incomplete state (SHE-6).
    * @param {HTMLElement} li - The <li> todo item element.
    */
@@ -75,6 +100,7 @@
     const action = checkbox.checked ? 'Mark as incomplete' : 'Mark as complete';
     checkbox.setAttribute('aria-label', `${action}: "${label.textContent}"`);
     saveTodos();
+    syncClearCompleted();
   }
 
   /**
@@ -86,6 +112,7 @@
     li.remove();
     syncEmptyState();
     saveTodos();
+    syncClearCompleted();
   }
 
   /**
@@ -131,6 +158,7 @@
       const action = checkbox.checked ? 'Mark as incomplete' : 'Mark as complete';
       checkbox.setAttribute('aria-label', `${action}: "${text}"`);
       saveTodos();
+      syncClearCompleted();
     });
 
     /* Label (SHE-5 / SHE-6) */
@@ -156,6 +184,7 @@
     list.appendChild(li);
 
     syncEmptyState();
+    syncClearCompleted();
     if (shouldSave) {
       saveTodos();
     }
@@ -206,10 +235,15 @@
 
   form.addEventListener('submit', handleSubmit);
 
+  if (clearCompBtn) {
+    clearCompBtn.addEventListener('click', clearCompleted);
+  }
+
   /* ── Initial render ── */
   loadTodos();
   syncEmptyState();
+  syncClearCompleted();
 
   /* ── Public API (used by tests) ── */
-  window.__todoApp = { addTodo, toggleTodo, deleteTodo, syncEmptyState, saveTodos, loadTodos, STORAGE_KEY };
+  window.__todoApp = { addTodo, toggleTodo, deleteTodo, clearCompleted, syncEmptyState, syncClearCompleted, saveTodos, loadTodos, STORAGE_KEY };
 })();
