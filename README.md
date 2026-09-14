@@ -2,7 +2,7 @@
 
 > **Evaluation Task**: AI Automation Engineer (Intern) — Shayan Solutions  
 > **Repository**: [github.com/25sheraz/To-do-App](https://github.com/25sheraz/To-do-App)  
-> **Linear Project**: [To-do-list](https://linear.app/sheraz-ahmad/project/to-do-list-7a3d6a636143)
+> **Linear Project**: [To-do-list](https://linear.app/sheraz-ahmad/project/to-do-list-51860119c343)
 
 ---
 
