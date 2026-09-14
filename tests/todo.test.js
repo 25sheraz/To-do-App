@@ -1,12 +1,13 @@
 /**
  * tests/todo.test.js
- * Unit tests for SHE-5 + SHE-6 + SHE-7
+ * Unit tests for SHE-5 + SHE-6 + SHE-7 + SHE-9
  *
  * Runs in Jest's jsdom environment (configured in package.json).
  *
  * SHE-5: Add a new todo item (7 tests)
  * SHE-6: Mark a todo item as complete (6 tests)
  * SHE-7: Delete a todo item (6 tests)
+ * SHE-9: Delete edge cases – list integrity (5 tests)
  */
 
 const fs   = require('fs');
@@ -194,5 +195,66 @@ describe('SHE-7: Delete a todo item', () => {
     submitTodo('Accessible task');
     const deleteBtn = getList().children[0].querySelector('.delete-btn');
     expect(deleteBtn.getAttribute('aria-label')).toContain('Delete');
+  });
+});
+
+/* ─────────────────────────────────────────────
+   SHE-9: Delete edge cases – list integrity
+───────────────────────────────────────────── */
+describe('SHE-9: Delete edge cases – list integrity', () => {
+
+  test('deleting the only item leaves the list completely empty', () => {
+    submitTodo('Solo task');
+    const li = getList().children[0];
+    window.__todoApp.deleteTodo(li);
+    expect(getList().children.length).toBe(0);
+  });
+
+  test('deleting first item of many leaves remaining items untouched', () => {
+    submitTodo('First');
+    submitTodo('Second');
+    submitTodo('Third');
+    const firstLi = getList().children[0];
+    window.__todoApp.deleteTodo(firstLi);
+    expect(getList().children.length).toBe(2);
+    expect(getList().children[0].querySelector('.todo-label').textContent).toBe('Second');
+    expect(getList().children[1].querySelector('.todo-label').textContent).toBe('Third');
+  });
+
+  test('deleting last item of many leaves remaining items untouched', () => {
+    submitTodo('Alpha');
+    submitTodo('Beta');
+    submitTodo('Gamma');
+    const lastLi = getList().children[2];
+    window.__todoApp.deleteTodo(lastLi);
+    expect(getList().children.length).toBe(2);
+    expect(getList().children[0].querySelector('.todo-label').textContent).toBe('Alpha');
+    expect(getList().children[1].querySelector('.todo-label').textContent).toBe('Beta');
+  });
+
+  test('deleting all items one by one restores empty-state after the last deletion', () => {
+    submitTodo('Task A');
+    submitTodo('Task B');
+    expect(getEmptyState().classList.contains('hidden')).toBe(true);
+
+    window.__todoApp.deleteTodo(getList().children[0]); // remove "Task A"
+    expect(getEmptyState().classList.contains('hidden')).toBe(true); // still has Task B
+
+    window.__todoApp.deleteTodo(getList().children[0]); // remove "Task B"
+    expect(getEmptyState().classList.contains('hidden')).toBe(false); // empty again
+  });
+
+  test('completed item can be deleted and does not affect incomplete siblings', () => {
+    submitTodo('Keep this (incomplete)');
+    submitTodo('Delete this (complete)');
+
+    const completedLi = getList().children[1];
+    window.__todoApp.toggleTodo(completedLi);
+    expect(completedLi.classList.contains('completed')).toBe(true);
+
+    window.__todoApp.deleteTodo(completedLi);
+    expect(getList().children.length).toBe(1);
+    expect(getList().children[0].classList.contains('completed')).toBe(false);
+    expect(getList().children[0].querySelector('.todo-label').textContent).toBe('Keep this (incomplete)');
   });
 });
